@@ -68,11 +68,11 @@ namespace SpaceEngineers.SolarPanelRegulator
         /// </summary>
         private float _LAST_ERROR = 0f;
 
-        private float _PROPORTIONAL = 2f;
+        private float _PROPORTIONAL = 1.1f;
 
-        private float _INTEGRAL = 2f;
+        private float _INTEGRAL = .5f;
 
-        private float _DERIVATIVE = 2f;
+        private float _DERIVATIVE = .5f;
 
         #endregion
 
@@ -101,7 +101,7 @@ namespace SpaceEngineers.SolarPanelRegulator
 
             _SolarPanels = tempList.Cast<IMySolarPanel>().ToList();
 
-            Runtime.UpdateFrequency = UpdateFrequency.Update1;
+            Runtime.UpdateFrequency = UpdateFrequency.Update100;
         }
 
         #endregion
@@ -135,9 +135,15 @@ namespace SpaceEngineers.SolarPanelRegulator
                 "Last X angle:", (_LastXAngle * (180 / Math.PI)).ToString(), "\n",
                 "Current X angle:", (_RotorX.Angle * (180 / Math.PI)).ToString());
 
+            _RotorX.TargetVelocityRPM = 3;
+            _RotorY.TargetVelocityRPM = 3;
+            _RotorZ.TargetVelocityRPM = 3;
+
             ShittyRegulation(_RotorX, averagePower);
             ShittyRegulation(_RotorY, averagePower);
             ShittyRegulation(_RotorZ, averagePower);
+
+            _LAST_ERROR = _ERROR;
 
             _LastAverage = averagePower;
         }
@@ -149,7 +155,7 @@ namespace SpaceEngineers.SolarPanelRegulator
                 throw new ArgumentException("regulator is null");
             }
 
-            float integral = 3f;
+            float integral = 0.5f;
             float deltaError = _ERROR - _LAST_ERROR;
 
             _ERROR = TARGET_VALUE - averagePower;
@@ -157,20 +163,22 @@ namespace SpaceEngineers.SolarPanelRegulator
 
             float controlVar = _PROPORTIONAL * _ERROR * _INTEGRAL * integral * _DERIVATIVE * deltaError;
 
-            if (controlVar > 1)
+            _DebugLCD.WriteText("\nTarget velocity for: " + regulator.TargetVelocityRPM, append: true);
+
+            if (controlVar > 360)
             {
-                regulator.TargetVelocityRPM = 3;
+                regulator.TargetVelocityRPM = controlVar;
             }
-            else if (controlVar < 1)
+            else if (controlVar < 360)
             {
-                regulator.TargetVelocityRPM = -3;
+                regulator.TargetVelocityRPM = -controlVar;
             }
             else
             {
                 regulator.TargetVelocityRPM = 0;
             }
 
-            _LAST_ERROR = _ERROR;
+            _DebugLCD.WriteText("\ncontrolVar: " + controlVar.ToString(), append: true);
         }
 
         private void LogValues(params string[] messages)
